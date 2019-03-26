@@ -1,34 +1,34 @@
 import sys
 import cv2 as cv
 import numpy as np 
-import EdgeDetector as ed
+from matplotlib import pyplot as plt
+from edge_detector import Sobel, Prewitt, Laplace
+
+def show(srcImage, dstImage, Gx, Gy, name):
+    plt.subplot(2,2,1),plt.imshow(srcImage,cmap = 'gray')
+    plt.title('Grayscale'), plt.xticks([]), plt.yticks([])
+    plt.subplot(2,2,2),plt.imshow(dstImage,cmap = 'gray')
+    plt.title(name), plt.xticks([]), plt.yticks([])
+    if Gx != None:
+        plt.subplot(2,2,3),plt.imshow(Gx,cmap = 'gray')
+        plt.title(name + " X"), plt.xticks([]), plt.yticks([])
+    if Gy != None:
+        plt.subplot(2,2,4),plt.imshow(Gy,cmap = 'gray')
+        plt.title(name + "Y"), plt.xticks([]), plt.yticks([])
+    plt.show()
+
 
 if __name__ == "__main__":
+    filename = sys.argv[1]
+    operator = sys.argv[2]
+    srcImage = cv.imread(filename, cv.IMREAD_GRAYSCALE)
 
-    #List argv
-    fileName = sys.argv[1]
-    code = int(sys.argv[2])
-    result = 0
-    print(code)
-    image = cv.imread(fileName)
-    dstImage = None
-
-    
-    cv.imshow("Source",image)
-    
-    if (code == 1):
-        #doc them tham so
-        result = ed.Sobel(image, dstImage)
-    elif (code == 2):
-        #doc them tham so
-        result = ed.Prewitt(image, dstImage)
-    elif (code == 3):
-        #doc them tham so
-        result = ed.Laplace(image, dstImage)
-    elif (code == 4):
-        result = ed.Canny(image, dstImage)
-
-    if result != 0:
-        cv.imshow("Result", dstImage)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    if operator == "--sobel":
+        Gx, Gy, dstImage = Sobel(srcImage)
+        show(srcImage, dstImage, Gx, Gy, "Sobel")
+    elif operator == "--prewitt":
+        Gx, Gy, dstImage = Sobel(srcImage)
+        show(srcImage, dstImage, Gx, Gy, "Prewitt")
+    elif operator == "--laplace":
+        dstImage = Laplace(srcImage)
+        show(srcImage, dstImage, Gx=None, Gy=None, name="Laplace")
