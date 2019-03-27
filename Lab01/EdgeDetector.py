@@ -23,19 +23,18 @@ def Sobel(srcImage):
     Gy = np.zeros((height, width))
     dstImage = np.zeros((height, width))
     # Kernel of the derivative in x direction    
-    #Wx = np.array([[0.25, 0, -0.25], [0.5, 0, -0.5], [0.25, 0, -0.25]])
-    Wx = np.array([[0.5], [1],[0.5]])
-    Wy = np.array([[-0.5], [0], [0.5]])
+    Wx = np.array([[0.25, 0, -0.25], [0.5, 0, -0.5], [0.25, 0, -0.25]])
     # Kernel of the derivative in y direction    
-    #Wy = np.array([[-0.25, -0.5, -0.25], [0, 0, 0], [0.25, 0.5, 0.25]])
+    Wy = np.array([[-0.25, -0.5, -0.25], [0, 0, 0], [0.25, 0.5, 0.25]])
     for row in range(1, height-1):
         for col in range(1, width-1):
             # The derivative in x direction of pixel[rol, col]
             temp = srcImage[row - 1 : row + 2, col - 1 : col + 2]
-            fx = np.dot(Wx.T, np.dot(temp,Wy)).reshape(1)
+            # The derivative in x direction of pixel[rol, col]
+            fx = (temp * Wx).sum()
             Gx[row, col] = saturate_cast(fx)
             # The derivative in y direction of pixel[rol, col]
-            fy = np.dot(Wy.T, np.dot(temp, Wx)).reshape(1)
+            fy = (temp * Wy).sum()
             Gy[row, col] = saturate_cast(fy)
             # Approximation of the gradient in that pixel
             dstImage[row, col] = saturate_cast(abs(fx + fy))
