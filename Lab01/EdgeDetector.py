@@ -142,13 +142,13 @@ def Canny(srcImage, lowThreshold = 0, highThreshold = 0):
                 Ga, Gb = G[i, j - 1], G[i, j + 1]
             # bin 2: 22.5 -> 67.5
             elif (Theta[i, j] >= 22.5 and Theta[i, j] < 67.5):
-                Ga, Gb = G[i - 1, j - 1], G[i + 1, j + 1]
+                Ga, Gb = G[i + 1, j - 1], G[i - 1, j + 1]
             # bin 3: 67.5 -> 112.5
             elif (Theta[i, j] >= 67.5 and Theta[i, j] < 112.5):
                 Ga, Gb = G[i - 1, j], G[i + 1, j]
             else:
                 #bin 4: từ 112.5 -> 157.5
-                Ga, Gb = G[i + 1, j - 1], G[i - 1, j + 1]
+                Ga, Gb = G[i - 1, j - 1], G[i + 1, j + 1]
             # Các điểm kề mà nhỏ hơn điểm đang xét thì không loại bỏ nó (ở đây ban đầu gán là 0 nên gán nó là giá trị cường độ gradient tại i, j)
             if (G[i, j] >= Ga) and (G[i, j] >= Gb):
                 gradNms[i, j] = G[i, j]
