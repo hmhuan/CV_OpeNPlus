@@ -47,7 +47,7 @@ def Sobel(srcImage):
 # Hàm phát hiện biên cạnh bằng toán tử Prewitt
 # Input: ảnh nguồn
 # Output: ảnh đạo hàm theo x, y và ảnh đích
-def Prewitt(srcImage, dstImage):
+def Prewitt(srcImage):
     """ Edge detector using Sobel operator
         Argument:
         @srcImage: source image
