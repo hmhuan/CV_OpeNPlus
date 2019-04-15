@@ -7,124 +7,6 @@
 using namespace cv;
 using namespace std;
 
-//Mat detectHarris(Mat image, int Threshold)
-//{
-//	/*
-//	GrayImage: anh xam
-//	blurImage: anh lam tron bang Gaussian
-//	Ix, Iy: Dao ham cua anh
-//	*/
-//	Mat dstImage, GrayImage, blurImage, Ix, Iy, G;
-//	vector<int> offsets;
-//	const float BYTE_TO_FLOAT = 1.0f;
-//
-//	//width là chiều rộng ảnh, height là chiều cao ảnh
-//	int width = dstImage.cols, height = dstImage.rows;
-//	//nChannels là số kênh màu
-//	int nChannels = dstImage.channels();
-//	//widthStep là khoảng cách tính theo byte giữa 2 pixel cùng cột trên 2 dòng kế tiếp
-//	int widthStep = dstImage.step[0];
-//
-//	// Khởi tạo offsets
-//	int kHalfWidth = 3 >> 1, kHalfHeight = 3 >> 1, n = 9;
-//	for (int y = -kHalfHeight; y <= kHalfHeight; y++)
-//		for (int x = -kHalfWidth; x <= kHalfWidth; x++)
-//			offsets.push_back(y * widthStep + x);
-//
-//	if (image.type() == CV_8UC1)
-//		GrayImage = image.clone();
-//	else
-//		cvtColor(image, GrayImage, CV_BGR2GRAY);
-//	GaussianBlur(GrayImage, blurImage, Size(5, 5), 1.4);
-//
-//	// 2. Tinh dao ham va huong cua anh
-//	uchar *pBlur = (uchar *)blurImage.data, *pBlurRow;
-//	uchar *pData = (uchar *)dstImage.data, *pRow;
-//
-//	float sobel = 1.0f;
-//	float Wx[9] = { -1.0 / sobel, 0.0 / sobel, 1.0 / sobel,
-//		-2.0 / sobel, 0.0 / sobel, 2.0 / sobel,
-//		-1.0 / sobel, 0.0 / sobel, 1.0 / sobel };
-//	float Wy[9] = { 1.0 / sobel, 2.0 / sobel, 1.0 / sobel,
-//		0.0 / sobel, 0.0 / sobel, 0.0 / sobel,
-//		-1.0 / sobel, -2.0 / sobel, -1.0 / sobel };
-//	Ix.create(height, width, CV_32FC1);
-//	Iy.create(height, width, CV_32FC1);
-//	G.create(height, width, CV_32FC1);
-//	// Tính đạo hàm theo hướng x, y và độ lớn gradiant ảnh
-//	for (int i = 0; i < height; i++, pBlur += widthStep)
-//	{
-//		pBlurRow = pBlur;
-//		for (int j = 0; j < width; j++, pBlurRow += nChannels)
-//		{
-//			float sumX = 0.0f, sumY = 0.0f, sum = 0.0f;
-//			for (int k = 0; k < n; k++)
-//			{
-//				sumX += pBlurRow[offsets[k]] * Wx[n - 1 - k];
-//				sumY += pBlurRow[offsets[k]] * Wy[n - 1 - k];
-//			}
-//			sum = hypot(sumX, sumY);
-//			Ix.at<float>(i, j) = sumX;
-//			Iy.at<float>(i, j) = sumY;
-//			G.at<float>(i, j) = sum;
-//		}
-//	}
-//	// 3. Xay dung ma tran M cho moi cua so tai moi diem anh va Tinh R
-//	Mat R;
-//	R.create(height, width, CV_32FC1);
-//
-//	float *pR = (float *)R.data, *pRrow;
-//	float alpha = 0.05; // alpha in (0.04; 0.06)
-//	for (int i = 0; i < height; i++, pR += widthStep)
-//
-//
-//		// 4. Threshold R > T -> corner
-//
-//
-//		return dstImage;
-//}
-
-Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
-{
-	/// Init product image
-	Mat product(Ix.rows, Ix.cols, Ix.type());
-
-	//float *pxData, *pyData, *pData;
-	//float *pxRow, *pyRow, *pRow;
-	//pxData = (float*)Ix.data;
-	//pyData = (float*)Iy.data;
-	//pData = (float*)product.data;
-
-	////width là chiều rộng ảnh, height là chiều cao ảnh
-	//int width = Ix.cols, height = Ix.rows;
-	////widthStep là khoảng cách tính theo byte giữa 2 pixel cùng cột trên 2 dòng kế tiếp
-	//int widthStep = Ix.step[0];
-
-	//int nChannels = Ix.channels();
-
-	//for (int i = 0; i < height; i++, pxData += widthStep, pyData += widthStep, pData += widthStep)
-	//{
-	//	pRow = pData;
-	//	pxRow = pxData;
-	//	pyRow = pyData;
-	//	for (int j = 0; j < width; j++, pxRow += nChannels, pyRow += nChannels, pRow += nChannels)
-	//	{
-	//		pRow[0] = pxRow[0] * pyRow[0];
-	//	}
-	//}
-	int height = product.rows, width = product.cols;
-	for (int i = 0; i < height; i++) 
-	{
-		for (int j = 0; j < width; j++)
-		{
-			float mul = Ix.at<float>(i, j) * Iy.at<float>(i, j);
-			product.at<float>(i, j) = mul;
-		}
-	}
-
-	return product;
-}
-
 Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 {
 	/**
@@ -132,13 +14,18 @@ Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 	*	@R: the matrix with R value in pixel. 
 	*	@Threshold
 	**/
-	Mat dstImg = srcImg.clone();
-	float *pRData = (float *)R.data, *pRRow;
+	Mat dstImg;
+	if (srcImg.type() != CV_8UC3)
+		cvtColor(srcImg, dstImg, CV_GRAY2BGR);
+	else
+		dstImg = srcImg.clone();
+	//float *pRData = (float *)R.data, *pRRow;
 	uchar *pData = (uchar *)dstImg.data, *pRow;
+
 	// width là chiều rộng mat R, height là chiều cao mat R
-	int width = R.cols, height = R.rows;
+	int width = dstImg.cols, height = dstImg.rows;
 	// widthStep là khoảng cách tính theo byte giữa 2 pixel cùng cột trên 2 dòng kế tiếp
-	int widthStep = R.step[0], widthStepDst = dstImg.step[0];
+	int widthStepDst = dstImg.step[0];
 
 	float valR;
 	for (int i = 0; i < height; i++, pData += widthStepDst)
@@ -149,7 +36,6 @@ Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 			valR = R.at<float>(i, j);
 			if (valR > Threshold)
 			{
-				cout << valR << endl;
 				pRow[0] = 0; // Blue = 0
 				pRow[1] = 0; // Green = 0
 				pRow[2] = 255; // Red = 255
@@ -169,18 +55,36 @@ bool isInRange(int x, int y, int height, int width)
 float sumOfMat(const Mat & mat, int blockSize, int x, int y)
 {
 	float sum = 0.0f;
-	int *dx = new int[blockSize];
-	int *dy = new int[blockSize];
 	int height = mat.rows, width = mat.cols;
-	for (int i = -blockSize / 2; i <= blockSize / 2; i++)
-	{
-		dx[i] = dy[i] = i;
-	}
-	for (int i = 0; i < blockSize; i++)
-		for (int j = 0; j < blockSize; j++)
-			if (isInRange(x + dx[i], y + dy[j], height, width))
-				sum += mat.at<float>(x + dx[i], y + dy[j]);
+	
+	int halfBlockSize = blockSize / 2;
+	for (int i = -halfBlockSize; i <= halfBlockSize; i++)
+		for (int j = -halfBlockSize; j <= halfBlockSize; j++)
+			if (isInRange(x + i, y + j, height, width))
+				sum += mat.at<float>(x + i, y + j);
 	return sum;
+}
+
+Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
+{
+	// Init product image
+	Mat product(Ix.rows, Ix.cols, CV_32F);
+
+	//width là chiều rộng ảnh, height là chiều cao ảnh
+	int height = product.rows, width = product.cols;
+	//widthStep là khoảng cách tính theo byte giữa 2 pixel cùng cột trên 2 dòng kế tiếp
+	int widthStep = Ix.step[0];
+	int nChannels = Ix.channels();
+
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			float mul = Ix.at<float>(i, j) * Iy.at<float>(i, j) * 1.0f;
+			product.at<float>(i, j) = mul;
+		}
+	}
+	return product;
 }
 
 /**
@@ -196,28 +100,42 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k)
 {
 	// Init @sobelX and @sobelY image
 	Mat blurImg;
-	Mat Ix, Iy;
+	Mat Ix, Iy, sobelx, sobely;
 	Mat Ix2, Iy2, Ixy;
-	Mat Sx2, Sy2, Sxy;
 	Mat R;
 	
-	GaussianBlur(srcImg, blurImg, cv::Size(ksize, ksize), 1.4);
-	// 1. Compute x and y derivatives of @srcImg
-	Sobel(blurImg, Ix, CV_32FC1, 1, 0, ksize, 1, 0, BORDER_DEFAULT);
-	Sobel(blurImg, Iy, CV_32FC1, 0, 1, ksize, 1, 0, BORDER_DEFAULT);
+	// 1. Lọc ảnh với Gaussian để giảm nhiễu
+	GaussianBlur(srcImg, blurImg, cv::Size(ksize, ksize), 0);
+	imshow("Gray and Gaussian blur", blurImg);
+	// 2. Compute x and y derivatives of @srcImg
+	Sobel(blurImg, Ix, CV_32F, 1, 0, 3);
+	Sobel(blurImg, Iy, CV_32F, 0, 1, 3);
+
+	/*Convolution conv;
+	vector<float> kernelX, kernelY;
+
+	float Wx[9] = { 1.0/4, 0, -1.0/4, 2.0/4, 0, -2.0/4, 1.0/4, 0, -1.0/4};
+	float Wy[9] = { 1.0/4, 2.0/4, 1.0/4, 0, 0, 0, -1.0/4, -2.0/4, -1.0/4};
+
+	for (int i = 0; i < 9; i++)
+	{
+		kernelX.push_back(Wx[i]);
+		kernelY.push_back(Wy[i]);
+	}
+	
+	conv.SetKernel(kernelX, 3, 3);
+	conv.DoConvolution(blurImg, Ix);
+
+	conv.SetKernel(kernelY, 3, 3);
+	conv.DoConvolution(blurImg, Iy);*/
+
 	// 2. Compute products of derivatives at every pixel
 	Ixy = DerivativesProduct(Ix, Iy);
 	Ix2 = DerivativesProduct(Ix, Ix);
 	Iy2 = DerivativesProduct(Iy, Iy);
 	
-	//// 3. Compute the sum of derivatives' product at each pixel
-	//Sobel(Ix2, Sx2, CV_32FC1, 1, 1, ksize, 1, 0, BORDER_DEFAULT);
-	//Sobel(Iy2, Sy2, CV_32FC1, 1, 1, ksize, 1, 0, BORDER_DEFAULT);
-	//Sobel(Ixy, Sxy, CV_32FC1, 1, 1, ksize, 1, 0, BORDER_DEFAULT);
-
 	// 4. Compute the respone of the detector at each pixel
-
-	R.create(srcImg.rows, srcImg.cols, CV_32FC1);
+	R.create(srcImg.rows, srcImg.cols, CV_32F);
 	float * pRData = (float*)R.data, *pRRow;
 
 	// width là chiều rộng ảnh, height là chiều cao ảnh
@@ -229,31 +147,16 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k)
 
 	float sumIx2, sumIy2, sumIxy, TraceM, detM;
 
-	/*for (int i = 0; i < height; i++, pRData += widthStep)
-	{
-		pRRow = pRData;
-		for (int j = 0; j < width; j++, pRRow += nChannels)
-		{
-			sumIx2 = sumOfMat(Ix2, blockSize, i, j);
-			sumIy2 = sumOfMat(Iy2, blockSize, i, j);
-			sumIxy = sumOfMat(Ixy, blockSize, i, j);
-			detM = sumIx2 * sumIy2 - sumIxy * sumIxy;
-			TraceM = (sumIx2 + sumIy2);
-			pRRow[0] = detM - k * TraceM * TraceM;
-		}
-	}*/
-
-	for (int i = 0; i<height; i++)
+	for (int i = 0; i < height; i++)
 		for (int j = 0; j < width; j++)
 		{
 			sumIx2 = sumOfMat(Ix2, blockSize, i, j);
 			sumIy2 = sumOfMat(Iy2, blockSize, i, j);
 			sumIxy = sumOfMat(Ixy, blockSize, i, j);
 			detM = sumIx2 * sumIy2 - sumIxy * sumIxy;
-			TraceM = (sumIx2 + sumIy2);
+			TraceM = sumIx2 + sumIy2;
 			R.at<float>(i, j) = detM - k * TraceM * TraceM;
 		}
-
 	return R;
 }
 
