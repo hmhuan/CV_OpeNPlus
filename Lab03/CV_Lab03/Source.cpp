@@ -2,15 +2,16 @@
 
 int main(int argc, char * argv[])
 {
-	Mat srcImg = imread("07.jpg", IMREAD_COLOR), GrayImg; //auto load image with BGR
+	Mat srcImg = imread("grid.jpg", IMREAD_COLOR), GrayImg; //auto load image with BGR
 	//int code = atoi(argv[2]);
 	//More parameters
 
 	cvtColor(srcImg, GrayImg, COLOR_BGR2GRAY);
-	
-	Mat R = DetectHarris(GrayImg, 7, 5, 0.05);
+	int blockSize = 17;
+	float Threshold = 10000000000.0;
+	Mat R = DetectHarris(GrayImg, blockSize, 5, 0.05, Threshold);
 
-	Mat dstImg = ImageWithFeature(srcImg, R, 10000000000.0);
+	Mat dstImg = ImageWithFeature(srcImg, R, Threshold);
 
 	imshow("Original", srcImg);
 	if (!dstImg.empty())

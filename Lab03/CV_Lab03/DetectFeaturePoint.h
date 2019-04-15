@@ -36,9 +36,10 @@ Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 			valR = R.at<float>(i, j);
 			if (valR > Threshold)
 			{
-				pRow[0] = 0; // Blue = 0
-				pRow[1] = 0; // Green = 0
-				pRow[2] = 255; // Red = 255
+				// pRow[0] = 0; // Blue = 0
+				// pRow[1] = 0; // Green = 0
+				// pRow[2] = 255; // Red = 255
+				circle(dstImg, Point(i, j), 3.0, Scalar(0, 0, 255), 2, 8);
 			}
 		}	
 	}
@@ -65,6 +66,43 @@ float sumOfMat(const Mat & mat, int blockSize, int x, int y)
 	return sum;
 }
 
+Mat NonMaximumSuppression(Mat & R, int blockSize, float Threshold)
+{
+	Mat Nms;
+	int halfBlockSize = blockSize / 2;
+	int height = R.rows, width = R.cols;
+	Nms.create(R.rows, R.cols, CV_8U);
+	
+	for (int i = 0; i < height; i++)
+		for (int j = 0; j < width; j++)
+		{
+			float currVal = R.at<float>(i, j); // Xet gia tri tai i, j
+			bool check = true;
+			if (currVal > Threshold)
+			{
+				for (int x = -halfBlockSize; x <= halfBlockSize; x++)
+				{
+					for (int y = -halfBlockSize; y <= halfBlockSize; y++)
+						if (isInRange(i + x, j + y, height, width))
+							if (currVal < R.at<float>(i + x, j + y))
+							{
+								check = false;
+								break;
+							}
+					if (!check)
+						break;
+				}
+				if (check)
+					Nms.at<uchar>(i, j) = 1;
+				else
+					Nms.at<uchar>(i, j) = 0;
+			}
+			else
+				Nms.at<uchar>(i, j) = 0;
+		}
+	return Nms;
+}
+
 Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
 {
 	// Init product image
@@ -80,7 +118,7 @@ Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
 	{
 		for (int j = 0; j < width; j++)
 		{
-			float mul = Ix.at<float>(i, j) * Iy.at<float>(i, j) * 1.0f;
+			float mul = Ix.at<uchar>(i, j) * Iy.at<uchar>(i, j) * 1.0f;
 			product.at<float>(i, j) = mul;
 		}
 	}
@@ -96,7 +134,7 @@ Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
 *	@k: Harris detector free parameter
 * Return: the respone of detector at each pixel - R value
 **/
-Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k)
+Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float Threshold)
 {
 	// Init @sobelX and @sobelY image
 	Mat blurImg;
@@ -106,10 +144,10 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k)
 	
 	// 1. Lọc ảnh với Gaussian để giảm nhiễu
 	GaussianBlur(srcImg, blurImg, cv::Size(ksize, ksize), 0);
-	imshow("Gray and Gaussian blur", blurImg);
-	// 2. Compute x and y derivatives of @srcImg
-	Sobel(blurImg, Ix, CV_32F, 1, 0, 3);
-	Sobel(blurImg, Iy, CV_32F, 0, 1, 3);
+	
+	// 2. Compute x and y derivatives of @srcImg sobel 3 x 3
+	Sobel(blurImg, Ix, CV_8U, 1, 0, 3);
+	Sobel(blurImg, Iy, CV_8U, 0, 1, 3);
 
 	/*Convolution conv;
 	vector<float> kernelX, kernelY;
@@ -156,6 +194,42 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k)
 			detM = sumIx2 * sumIy2 - sumIxy * sumIxy;
 			TraceM = sumIx2 + sumIy2;
 			R.at<float>(i, j) = detM - k * TraceM * TraceM;
+		}
+	// 
+	//Mat Nms;
+	//int halfBlockSize = blockSize / 2;
+	//Nms.create(height, width, CV_8UC1);
+	//for (int i = 0; i < height; i++)
+	//	for (int j = 0; j < width; j++)
+	//	{
+	//		float currVal = R.at<float>(i, j); // Xet gia tri tai i, j
+	//		bool check = true;
+	//		for (int x = -halfBlockSize; x <= halfBlockSize; x++)
+	//		{
+	//			for (int y = -halfBlockSize; y <= halfBlockSize; y++)
+	//				if (isInRange(i + x, j + y, height, width))
+	//				{
+	//					float neighbor = R.at<float>(i + x, j + y);
+	//					if (currVal < neighbor)
+	//					{
+	//						check = false;
+	//						break;
+	//					}
+	//				}
+	//			if (!check)
+	//				break;
+	//		}
+	//		if (check)
+	//			Nms.at<uchar>(i, j) = 1;
+	//		else
+	//			Nms.at<uchar>(i, j) = 0;
+	//	}
+	Mat Nms = NonMaximumSuppression(R, blockSize, Threshold);
+	for (int i = 0; i < height; i++)
+		for (int j = 0; j < width; j++)
+		{
+			if (Nms.at<uchar>(i, j) == 0)
+				R.at<float>(i, j) = 0;
 		}
 	return R;
 }
