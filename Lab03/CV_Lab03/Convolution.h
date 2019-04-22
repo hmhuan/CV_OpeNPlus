@@ -2,6 +2,7 @@
 #include "opencv2\core.hpp"
 #include "opencv2\highgui\highgui.hpp"
 #include "opencv2\imgproc.hpp"
+#include "opencv2\features2d.hpp"
 #include <iostream>
 
 using namespace cv;
@@ -34,11 +35,11 @@ float sumOfMat(const Mat & mat, int blockSize, int x, int y)
 }
 
 
-/*
-Phép convolve cho ảnh 1 channel
+/* Convolve
+Phép convolve cho ảnh 1 channel với 1 kernel.
 Input: srcImg - ảnh gốc
-		kernel - mảng chứa các phần tử của ma trận để tính tích chập
-Output: Convolution - ảnh tích chập kết quả
+		kernel - mảng chứa các phần tử của ma trận để tính tích chập.
+Output: Convolution - ảnh tích chập kết quả.
 */
 Mat convolve(Mat & srcImg, vector<float> kernel, int ksize)
 {
@@ -48,18 +49,15 @@ Mat convolve(Mat & srcImg, vector<float> kernel, int ksize)
 	int halfKsize = ksize / 2;
 	vector<int> dx;
 	vector<int> dy;
-	// Khởi tạo ảnh kết quả convolution có kích thước bằng ảnh gốc
+	// Khởi tạo ảnh kết quả convolution có kích thước bằng ảnh gốc.
 	Convolution.create(height, width, CV_32F);
-	// Khởi tạo offset kích thước bằng kerner
+	// Khởi tạo offset kích thước bằng kernel.
 	for (int i = halfKsize; i >= -halfKsize; i--)
 		for (int j = halfKsize; j >= -halfKsize; j--)
 		{
 			dx.push_back(i);
 			dy.push_back(j);
 		}
-	/*
-
-	*/
 	for (int i = 0; i < height; i++)
 		for (int j = 0; j < width; j++)
 		{
