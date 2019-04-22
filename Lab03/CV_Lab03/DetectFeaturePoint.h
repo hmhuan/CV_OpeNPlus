@@ -32,10 +32,7 @@ Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 			valR = R.at<float>(i, j);
 			if (valR > Threshold)
 			{
-				 //pRow[0] = 0; // Blue = 0
-				// pRow[1] = 0; // Green = 0
-				 //pRow[2] = 255; // Red = 255
-				 circle(dstImg, Point(i, j), 3.0, Scalar(0, 0, 255), 2, 8);
+				 circle(dstImg, Point(j, i), 3.0, Scalar(0, 0, 255), 2, 8);
 			}
 		}	
 	}
@@ -43,8 +40,8 @@ Mat ImageWithFeature(const Mat&srcImg, const Mat& R, float Threshold)
 }
 
 
-/*
-
+/* Non maximum suppression
+Hàm loại bỏ các điểm không phải cực trị cục bộ
 */
 Mat NonMaximumSuppression(Mat & R, int blockSize, float Threshold)
 {
@@ -56,10 +53,11 @@ Mat NonMaximumSuppression(Mat & R, int blockSize, float Threshold)
 	for (int i = 0; i < height; i++)
 		for (int j = 0; j < width; j++)
 		{
-			float currVal = R.at<float>(i, j); // Xet gia tri tai i, j
+			float currVal = R.at<float>(i, j); // Xét giá trị tại (i, j).
 			bool check = true;
 			if (currVal > Threshold)
 			{
+				// Duyệt qua block
 				for (int x = -halfBlockSize; x <= halfBlockSize; x++)
 				{
 					for (int y = -halfBlockSize; y <= halfBlockSize; y++)
@@ -73,12 +71,12 @@ Mat NonMaximumSuppression(Mat & R, int blockSize, float Threshold)
 						break;
 				}
 				if (check)
-					Nms.at<uchar>(i, j) = 1;
+					Nms.at<uchar>(i, j) = 1; // Nếu lớn hơn ngưỡng và cực đại cục bộ thì giữ lại.
 				else
-					Nms.at<uchar>(i, j) = 0;
+					Nms.at<uchar>(i, j) = 0; // Nếu không phải cực đại cục bộ thì loại bỏ.
 			}
 			else
-				Nms.at<uchar>(i, j) = 0;
+				Nms.at<uchar>(i, j) = 0; // Ngược lại nếu nhỏ hơn ngưỡng thì loại bỏ.
 		}
 	return Nms;
 }
@@ -94,7 +92,7 @@ Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
 	{
 		for (int j = 0; j < width; j++)
 		{
-			mul = Ix.at<uchar>(i, j) * Iy.at<uchar>(i, j) * 1.0f;
+			mul = Ix.at<float>(i, j) * Iy.at<float>(i, j) * 1.0f;
 			product.at<float>(i, j) = mul;
 		}
 	}
@@ -110,36 +108,40 @@ Mat DerivativesProduct(const Mat &Ix, const Mat& Iy)
 *	@k: Harris detector free parameter
 * Return: the respone of detector at each pixel - R value
 **/
-Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float Threshold)
+Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float & Threshold)
 {
 	// Init @sobelX and @sobelY image
 	Mat blurImg;
-	Mat Ix, Iy, sobelx, sobely;
+	Mat Ix, Iy;
 	Mat Ix2, Iy2, Ixy;
-	Mat R;
+	Mat R, NormR, ScaledR;
 	
 	// 1. Lọc ảnh với Gaussian để giảm nhiễu
-	GaussianBlur(srcImg, blurImg, cv::Size(ksize, ksize), 1);
+	GaussianBlur(srcImg, blurImg, cv::Size(ksize, ksize), 0, 0, BORDER_DEFAULT);
 	
 	// 2. Compute x and y derivatives of @srcImg sobel 3 x 3
-	Sobel(blurImg, Ix, CV_8UC1, 1, 0, 3);
-	Sobel(blurImg, Iy, CV_8UC1, 0, 1, 3);
-
+	float sobelX[9] = {1.0/4, 0, -1.0/4, 1.0/2, 0, -1.0/2, 1.0/4, 0, -1.0/4};
+	float sobelY[9] = {-1.0/4, -1.0/2, -1.0/4, 0, 0, 0, 1.0/4, 1.0/2, 1.0/4};
+	vector<float> kernelX, kernelY;
+	for (int i = 0; i < 9; i++)
+	{
+		kernelX.push_back(sobelX[i]);
+		kernelY.push_back(sobelY[i]);
+	}
+	Ix = convolve(blurImg, kernelX, 3); // tích chập ảnh đã lọc gaussian với kernel sobelX
+	Iy = convolve(blurImg, kernelY, 3); // tích chập ảnh đã lọc gaussian với kernel sobelY
 	// 3. Compute products of derivatives at every pixel
 	Mat GIxy, GIx2, GIy2;
 	Ixy = DerivativesProduct(Ix, Iy);
 	Ix2 = DerivativesProduct(Ix, Ix);
 	Iy2 = DerivativesProduct(Iy, Iy);
 
-	// 3. Compute the sum of derivatives' product at each pixel
-	/*Sobel(Ix2, GIx2, CV_32F, 1, 1, ksize, 1, 0, BORDER_DEFAULT);
-	Sobel(Iy2, GIy2, CV_32F, 1, 1, ksize, 1, 0, BORDER_DEFAULT);
-	Sobel(Ixy, GIxy, CV_32F, 1, 1, ksize, 1, 0, BORDER_DEFAULT);*/
+	// 3. Gaussian các ma trận ảnh Ix2, Iy2, Ixy vừa tìm được
+	GaussianBlur(Ixy, GIxy, Size(ksize, ksize), 1, 1, BORDER_DEFAULT);
+	GaussianBlur(Ix2, GIx2, Size(ksize, ksize), 1, 1, BORDER_DEFAULT);
+	GaussianBlur(Iy2, GIy2, Size(ksize, ksize), 1, 1, BORDER_DEFAULT);
 
-	GaussianBlur(Ixy, GIxy, Size(ksize, ksize), 2.5);
-	GaussianBlur(Ix2, GIx2, Size(ksize, ksize), 2.5);
-	GaussianBlur(Iy2, GIy2, Size(ksize, ksize), 2.5);
-	// 4. Compute the respone of the detector at each pixel
+	// 4. Compute the Respone of the detector at each pixel
 	R.create(srcImg.rows, srcImg.cols, CV_32F);
 
 	// width là chiều rộng ảnh, height là chiều cao ảnh
@@ -150,19 +152,19 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float Thr
 	for (int i = 0; i < height; i++)
 		for (int j = 0; j < width; j++)
 		{
-			sumIx2 = sumOfMat(GIx2, blockSize, i, j);
-			sumIy2 = sumOfMat(GIy2, blockSize, i, j);
-			sumIxy = sumOfMat(GIxy, blockSize, i, j);
-			//lamda1 = (sumIx2 + sumIy2 + sqrt(4 * sumIxy*sumIxy + (sumIx2 - sumIy2) * (sumIx2 - sumIy2)));
-			//lamda2 = (sumIx2 + sumIy2 - sqrt(4 * sumIxy*sumIxy + (sumIx2 - sumIy2) * (sumIx2 - sumIy2)));
-			//sumIx2 = GIx2.at<float>(i, j);
-			//sumIy2 = GIy2.at<float>(i, j);
-			//sumIxy = GIxy.at<float>(i, j);
-			detM = sumIx2 * sumIy2 - sumIxy * sumIxy;
+			sumIx2 = sumOfMat(GIx2, blockSize, i, j);  // Tính sum Ix2 trong blockSize
+			sumIy2 = sumOfMat(GIy2, blockSize, i, j);  // Tính sum Iy2 trong blockSize
+			sumIxy = sumOfMat(GIxy, blockSize, i, j);  // Tính sum Ixy trong blockSize
+			detM = (sumIx2 * sumIy2) - (sumIxy * sumIxy);
 			TraceM = sumIx2 + sumIy2;
 			R.at<float>(i, j) = detM - k * TraceM * TraceM;
 		}
-
+	// In ra min - max để test ngưỡng
+	double min, max;
+	cv::minMaxLoc(R, &min, &max);
+	cout << max << " " << min << "\n";
+	
+	// 5. Non maximum suppression với ma trận Respond R
 	Mat Nms = NonMaximumSuppression(R, blockSize, Threshold);
 	for (int i = 0; i < height; i++)
 		for (int j = 0; j < width; j++)
@@ -170,24 +172,60 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float Thr
 			if (Nms.at<uchar>(i, j) == 0)
 				R.at<float>(i, j) = 0;
 		}
-	return R;
+	return R; // Trả về ma trận Respond
 }
 
-/* Laplacian of Gaussian
+/* Blob use Laplacian of Gaussian
 
 */
-Mat detectBlob(Mat image)
+Mat detectBlob(Mat srcImage)
 {
+	float sigma[11] = { 1, 2.2, 3.4, 4.0, 4.6, 5.2, 5.8, 6.4, 8.5, 11, 15 }
+
+	//Mat dstImage;
+	//// Setup SimpleBlobDetector parameters.
+	//SimpleBlobDetector::Params params;
+
+	//// Change thresholds
+	//params.minThreshold = 10;
+	//params.maxThreshold = 200;
+
+	//// Filter by Area.
+	//params.filterByArea = true;
+	//params.minArea = 1500;
+
+	//// Filter by Circularity
+	//params.filterByCircularity = true;
+	//params.minCircularity = 0.1;
+
+	//// Filter by Convexity
+	//params.filterByConvexity = true;
+	//params.minConvexity = 0.87;
+
+	//// Filter by Inertia
+	//params.filterByInertia = true;
+	//params.minInertiaRatio = 0.01;
 
 
-	Mat dstImage;
+	//// Storage for blobs
+	//vector<KeyPoint> keypoints;
+	//Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+	//detector->detect(srcImage, keypoints);
 
+	//Mat im_with_keypoints;
+	//drawKeypoints(srcImage, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
-	return dstImage;
+	//// Show blobs
+	//imshow("keypoints", im_with_keypoints);
+	////drawKeypoints(srcImage, keypoints, dstImage, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+	//return dstImage;
 }
 /* Different of Gaussian
 Input:
-	-
+	- srcImage: Ảnh nguồn.
+	- kSize: kích thước của sổ.
+	- sigma: giá trị sigma 1.
+	- k: hệ số chênh lệch giữa 2 sigma.
 Output:
 	ảnh kết quả detect bằng DoG
 */
