@@ -175,50 +175,92 @@ Mat DetectHarris(const Mat& srcImg, int blockSize, int ksize, float k, float & T
 	return R; // Trả về ma trận Respond
 }
 
+/*LoG - Laplacian Of Gaussian.
+blockSize cho bằng 5.
+Input:
+	- image: ảnh nguồn.
+	- sigma: giá trị sigma.
+	- kSize: kích thước của sổ.
+Output:
+	- LoGImg: ảnh sau khi áp dụng LoG.
+*/
+Mat LoG(Mat & srcImage, float sigma, int kSize)
+{
+	// Nguồn:
+	// https://academic.mu.edu/phys/matthysd/web226/Lab02.htm
+	Mat LoGImg;
+	int height = srcImage.rows, width = srcImage.cols;
+	vector<float> kernel; //kernel (kSize x kSize)
+	int halfkSize = kSize / 2;
+	int n = kSize * kSize; // Kích thước kernel
+
+	// khởi tạo kernel
+	float sum = 0.0f; // Tổng của kernel
+	float sigma2 = 2 * sigma * sigma; //2 * sigma^2
+	float ms = M_PI * sigma2 * sigma2; // mẫu số pi * sigma^4
+	for (int y = -halfkSize; y <= halfkSize; y++)
+		for (int x = -halfkSize; x <= halfkSize; x++)
+		{
+			float temp = (x*x + y*y)/(2*sigma2);
+			float h = -(1 - temp)*expf(-temp) / ms;
+			sum += h;
+			kernel.push_back(h);
+		}
+	//Chuẩn hóa kernel 
+	for (int i = 0; i < n; i++)
+		kernel[i] /= sum;
+	LoGImg = convolve(srcImage, kernel, kSize);
+	return LoGImg;
+}
+
 /* Blob use Laplacian of Gaussian
 
 */
-Mat detectBlob(Mat srcImage)
+Mat detectBlob(Mat & srcImage, int kSize)
 {
-	float sigma[11] = { 1, 2.2, 3.4, 4.0, 4.6, 5.2, 5.8, 6.4, 8.5, 11, 15 }
-
-	//Mat dstImage;
-	//// Setup SimpleBlobDetector parameters.
-	//SimpleBlobDetector::Params params;
-
-	//// Change thresholds
-	//params.minThreshold = 10;
-	//params.maxThreshold = 200;
-
-	//// Filter by Area.
-	//params.filterByArea = true;
-	//params.minArea = 1500;
-
-	//// Filter by Circularity
-	//params.filterByCircularity = true;
-	//params.minCircularity = 0.1;
-
-	//// Filter by Convexity
-	//params.filterByConvexity = true;
-	//params.minConvexity = 0.87;
-
-	//// Filter by Inertia
-	//params.filterByInertia = true;
-	//params.minInertiaRatio = 0.01;
-
-
-	//// Storage for blobs
-	//vector<KeyPoint> keypoints;
-	//Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
-	//detector->detect(srcImage, keypoints);
-
-	//Mat im_with_keypoints;
-	//drawKeypoints(srcImage, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-
-	//// Show blobs
-	//imshow("keypoints", im_with_keypoints);
-	////drawKeypoints(srcImage, keypoints, dstImage, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-	//return dstImage;
+	// Tham khảo source: 
+	// https://github.com/Abhishekmamidi123/Computer-Vision/blob/master/Assignment-1/3_Blob_detector.py
+	// Xét scale với 3 sigma
+	vector<Mat> imageSigma;
+	Mat blob;
+	float sigma[3] = { 1, 2.2, 3.4}; // Danh sách sigma để áp dụng LoG
+	int dx[9] = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+	int dy[9] = { -1, 0, 1, -1, 0, 1 , -1, 0, 1 };
+	int n = 3;
+	int height = srcImage.rows, width = srcImage.cols;
+	bool check;
+	// ảnh mờ có thể áp dụng bộ lọc Laplacian
+	for (int i = 0; i < n; i++)
+	{
+		imageSigma.push_back(LoG(srcImage, sigma[i], kSize));
+	}
+	
+	blob.create(height, width, CV_32F);
+	for (int i = 0; i < height; i++)
+		for (int j = 0; j < width; j++)
+		{
+			check = true;
+			float currVal = imageSigma[1].at<float>(i, j); // Lấy tại scale trung gian giá trị pixel.
+			for (int k = 0; k < 9; k++)
+				if (isInRange(i + dx[k], j + dy[k], height, width))
+				{
+					if (imageSigma[0].at<float>(i + dx[k], j + dy[k]) > currVal)
+					{
+						check = false;
+						break;
+					}
+					if (imageSigma[2].at<float>(i + dx[k], j + dy[k]) > currVal)
+					{
+						check = false;
+						break;
+					}
+				}
+			if (check)
+				blob.at<float>(i, j) = 1;
+			else
+				blob.at<float>(i, j) = 0;
+		}
+	return blob;
 }
 /* Different of Gaussian
 Input:

@@ -67,7 +67,7 @@ Mat convolve(Mat & srcImg, vector<float> kernel, int ksize)
 				{
 					sum += srcImg.at<uchar>(i + dx[k], j + dy[k]) * kernel[k];
 				}
-			Convolution.at<float>(i, j) = sum;//saturate_cast<uchar>(sum);
+			Convolution.at<float>(i, j) = sum;
  		}
 	return Convolution;
 }
